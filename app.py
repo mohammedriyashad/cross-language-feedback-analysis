@@ -2,7 +2,7 @@
 
 import streamlit as st # type: ignore
 from langdetect import detect # type: ignore
-from googletrans import Translator
+from deep_translator import GoogleTranslator# type: ignore
 import nltk # type: ignore
 from nltk.corpus import stopwords # type: ignore
 from nltk.stem import PorterStemmer # type: ignore
@@ -58,8 +58,7 @@ def translate_to_english(text):
       The translated text in English, or the original text if translation fails.
     """
     try:
-        translator = Translator()
-        translated_text = translator.translate(text, dest='en').text
+        translated_text = GoogleTranslator(source='auto', target='en').translate(text)
         return translated_text
     except Exception as e:
         print(f"Translation error: {e}")
