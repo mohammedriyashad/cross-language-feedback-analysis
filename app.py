@@ -1,198 +1,140 @@
-# Save this code as app.py
+import streamlit as st
+import pandas as pd
+from textblob import TextBlob
+from deep_translator import GoogleTranslator
+from langdetect import detect
+import matplotlib.pyplot as plt # type: ignore
 
-import streamlit as st # type: ignore
-from langdetect import detect # type: ignore
-from deep_translator import GoogleTranslator# type: ignore
-import nltk # type: ignore
-from nltk.corpus import stopwords # type: ignore
-from nltk.stem import PorterStemmer # type: ignore
-from nltk.tokenize import word_tokenize # type: ignore
-from nltk.stem import WordNetLemmatizer # type: ignore
-from nltk.sentiment.vader import SentimentIntensityAnalyzer # type: ignore
-# from sklearn.feature_extraction.text import TfidfVectorizer
-# from sklearn.decomposition import NMF
+# Page setup
+st.set_page_config(page_title="🌍 Cross-Language Feedback Analysis Dashboard", layout="wide")
 
-# Download necessary NLTK data (if not already downloaded)
-try:
-    nltk.data.find('tokenizers/punkt')
-except LookupError:
-    nltk.download('punkt')
-try:
-    nltk.data.find('corpora/stopwords')
-except LookupError:
-    nltk.download('stopwords')
-try:
-    nltk.data.find('corpora/wordnet')
-except LookupError:
-    nltk.download('wordnet')
-try:
-    nltk.data.find('sentiment/vader_lexicon.zip')
-except LookupError:
-    nltk.download('vader_lexicon')
+st.title("🌍 Cross-Language Feedback Analysis using NLP")
+st.write("Analyze multilingual customer feedback with automatic translation and sentiment visualization.")
 
+# --- Single feedback section ---
+st.header("🗣 Single Feedback Analysis")
+feedback_text = st.text_area("Enter feedback in any language:")
 
-def detect_language(text):
-    """
-    Detects the language of the input text.
+if st.button("Analyze Feedback"):
+    if feedback_text.strip():
+        try:
+            # Detect and translate
+            detected_lang = detect(feedback_text)
+            translated = GoogleTranslator(source='auto', target='en').translate(feedback_text)
 
-    Args:
-      text: The input string (feedback text).
+            # Sentiment analysis
+            blob = TextBlob(translated)
+            sentiment = blob.sentiment.polarity # type: ignore
 
-    Returns:
-      The detected language code as a string.
-    """
+            # Display results
+            st.subheader("🔍 Analysis Result")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.write(f"*Detected Language:* {detected_lang.upper()}")
+                st.write(f"*Original Feedback:* {feedback_text}")
+            with col2:
+                st.write(f"*Translated Feedback:* {translated}")
+
+            # Sentiment result
+            if sentiment > 0:
+                st.success(f"😊 Positive Sentiment (Score: {sentiment:.2f})")
+            elif sentiment < 0:
+                st.error(f"😠 Negative Sentiment (Score: {sentiment:.2f})")
+            else:
+                st.info(f"😐 Neutral Sentiment (Score: {sentiment:.2f})")
+        except Exception as e:
+            st.error(f"Error during processing: {e}")
+    else:
+        st.warning("Please enter feedback text.")
+
+st.markdown("---")
+
+# --- Bulk file upload section ---
+st.header("📂 Bulk Feedback Upload & Dashboard")
+uploaded_file = st.file_uploader("Upload a CSV or Excel file (must contain a 'feedback' column)", type=["csv", "xlsx"])
+
+if uploaded_file is not None:
     try:
-        return detect(text)
-    except:
-        return "unknown"
-
-
-def translate_to_english(text):
-    """
-    Translates the input text to English.
-
-    Args:
-      text: The input string (feedback text) to be translated.
-
-    Returns:
-      The translated text in English, or the original text if translation fails.
-    """
-    try:
-        translated_text = GoogleTranslator(source='auto', target='en').translate(text)
-        return translated_text
-    except Exception as e:
-        print(f"Translation error: {e}")
-        return text
-
-
-def preprocess_text(text):
-    """
-    Cleans and preprocesses the translated English text for NLP analysis.
-
-    Args:
-      text: The input string (translated English text).
-
-    Returns:
-      A string containing the processed text with tokens joined by spaces,
-      or an empty string if an error occurs.
-    """
-    try:
-        # Convert to lowercase
-        text = text.lower()
-
-        # Tokenize text
-        tokens = word_tokenize(text)
-
-        # Remove stop words
-        stop_words = set(stopwords.words('english'))
-        filtered_tokens = [word for word in tokens if word not in stop_words]
-
-        # Apply lemmatization
-        lemmatizer = WordNetLemmatizer()
-        lemmatized_tokens = [lemmatizer.lemmatize(word) for word in filtered_tokens]
-
-        # Join tokens back into a string
-        processed_text = " ".join(lemmatized_tokens)
-
-        return processed_text
-    except Exception as e:
-        print(f"Preprocessing error: {e}")
-        return ""
-
-
-def analyze_sentiment(text):
-    """
-    Analyzes the sentiment of the preprocessed English text.
-
-    Args:
-      text: The preprocessed English text string.
-
-    Returns:
-      A string indicating the sentiment ('positive', 'negative', 'neutral')
-      or 'unknown' if analysis fails.
-    """
-    try:
-        analyzer = SentimentIntensityAnalyzer()
-        sentiment_scores = analyzer.polarity_scores(text)
-
-        # Determine sentiment based on compound score
-        if sentiment_scores['compound'] >= 0.05:
-            return 'positive'
-        elif sentiment_scores['compound'] <= -0.05:
-            return 'negative'
+        # Read file
+        if uploaded_file.name.endswith(".csv"):
+            df = pd.read_csv(uploaded_file)
         else:
-            return 'neutral'
-    except Exception as e:
-        print(f"Sentiment analysis error: {e}")
-        return "unknown"
+            df = pd.read_excel(uploaded_file)
 
-# Optional Topic Modeling functions (uncomment if you want to include this feature)
-# def get_top_words(model, feature_names, n_top_words):
-#   """
-#   Prints the top words for each topic in the NMF model.
-
-#   Args:
-#     model: The fitted NMF model.
-#     feature_names: A list of feature names (words) from the TF-IDF vectorizer.
-#     n_top_words: The number of top words to display per topic.
-#   """
-#   for topic_idx, topic in enumerate(model.components_):
-#     print(f"Topic #{topic_idx + 1}:")
-#     print(" ".join([feature_names[i]
-#                     for i in topic.argsort()[:-n_top_words - 1:-1]]))
-#   print()
-
-def analyze_bulk_feedback(feedback_list):
-    """
-    Analyzes a list of feedback entries.
-
-    Args:
-      feedback_list: A list of strings, where each string is a feedback entry.
-
-    Returns:
-      A list of dictionaries, where each dictionary contains the original
-      feedback, detected language, translated text (if applicable),
-      preprocessed text, and sentiment.
-    """
-    results = []
-    for feedback in feedback_list:
-        detected_lang = detect_language(feedback)
-        translated_text = feedback
-        if detected_lang != 'en':
-            translated_text = translate_to_english(feedback)
-
-        preprocessed_text = preprocess_text(translated_text)
-        sentiment = analyze_sentiment(preprocessed_text)
-
-        results.append({
-            'original_feedback': feedback,
-            'detected_language': detected_lang,
-            'translated_text': translated_text,
-            'preprocessed_text': preprocessed_text,
-            'sentiment': sentiment
-        })
-    return results
-
-
-def main():
-    st.title("Cross-Language Feedback Analysis")
-
-    feedback_input = st.text_area("Enter customer feedback (one entry per line):", height=200)
-
-    if st.button("Analyze Feedback"):
-        if feedback_input:
-            feedback_list = feedback_input.strip().split('\n')
-            results = analyze_bulk_feedback(feedback_list)
-
-            st.subheader("Analysis Results:")
-            for result in results:
-                st.write(f"**Original Feedback:** {result['original_feedback']}")
-                st.write(f"**Detected Language:** {result['detected_language']}")
-                st.write(f"**Translated Text:** {result['translated_text']}")
-                st.write(f"**Sentiment:** {result['sentiment']}")
-                st.write("---")
+        if 'feedback' not in df.columns:
+            st.error("The file must contain a 'feedback' column.")
         else:
-            st.warning("Please enter feedback to analyze.")
+            st.write("### Preview of Uploaded Data")
+            st.dataframe(df.head())
 
-if __name__ == "__main__":
-    main()
+            if st.button("Run Bulk Analysis"):
+                translated_texts, sentiments, sentiment_labels, detected_langs = [], [], [], []
+
+                with st.spinner("Processing all feedback..."):
+                    for text in df['feedback']:
+                        try:
+                            lang = detect(str(text))
+                            translated = GoogleTranslator(source='auto', target='en').translate(str(text))
+                            blob = TextBlob(translated)
+                            sentiment_score = blob.sentiment.polarity # type: ignore
+
+                            detected_langs.append(lang)
+                            translated_texts.append(translated)
+                            sentiments.append(sentiment_score)
+                            sentiment_labels.append(
+                                "Positive" if sentiment_score > 0 else
+                                "Negative" if sentiment_score < 0 else
+                                "Neutral"
+                            )
+                        except Exception:
+                            detected_langs.append("error")
+                            translated_texts.append("Translation error")
+                            sentiments.append(0)
+                            sentiment_labels.append("Neutral")
+
+                # Append results to dataframe
+                df['detected_language'] = detected_langs
+                df['translated_feedback'] = translated_texts
+                df['sentiment_score'] = sentiments
+                df['sentiment'] = sentiment_labels
+
+                st.success("✅ Analysis Completed!")
+
+                # --- Dashboard Section ---
+                st.subheader("📊 Sentiment Dashboard")
+                col1, col2, col3 = st.columns(3)
+                total = len(df)
+                positives = len(df[df['sentiment'] == 'Positive'])
+                negatives = len(df[df['sentiment'] == 'Negative'])
+                neutrals = len(df[df['sentiment'] == 'Neutral'])
+
+                col1.metric("😊 Positive", positives)
+                col2.metric("😐 Neutral", neutrals)
+                col3.metric("😠 Negative", negatives)
+
+                # Bar chart visualization
+                st.write("### Sentiment Distribution")
+                sentiment_counts = df['sentiment'].value_counts()
+                st.bar_chart(sentiment_counts)
+
+                # Pie chart
+                fig, ax = plt.subplots()
+                ax.pie(sentiment_counts, labels= sentiment_counts.index, autopct="%1.1f%%", startangle=90) # type: ignore
+                ax.axis("equal")
+                st.pyplot(fig)
+
+                # Language distribution
+                st.write("### Detected Language Distribution")
+                lang_counts = df['detected_language'].value_counts()
+                st.bar_chart(lang_counts)
+
+                # Show analyzed data
+                st.write("### Full Analysis Data")
+                st.dataframe(df[['feedback', 'detected_language', 'translated_feedback', 'sentiment', 'sentiment_score']])
+
+                # Download option
+                csv = df.to_csv(index=False).encode('utf-8')
+                st.download_button("⬇ Download Results as CSV", data=csv, file_name="feedback_analysis_results.csv", mime="text/csv")
+
+    except Exception as e:
+        st.error(f"Error: {e}")
