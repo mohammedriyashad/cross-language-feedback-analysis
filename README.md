@@ -1,5 +1,8 @@
 🧠 Cross-Language Feedback Analysis using NLP
 
+You can view my app on steamlit using the below link:
+https://cross-language-feedback-analysis-lrbamxnkjbwdbcfvi4w9kb.streamlit.app/
+
 🌍 Overview
 Customer feedback often comes in multiple languages, making it hard for companies to understand global sentiments.
 This project uses Natural Language Processing (NLP) to analyze feedback written in any language, automatically detect and translate it to English, and perform sentiment analysis to classify opinions as Positive, Negative, or Neutral.
