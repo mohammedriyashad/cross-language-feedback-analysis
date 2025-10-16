@@ -1,6 +1,6 @@
-langdetect
-googletrans==4.0.0-rc1
-nltk
-scikit-learn
 streamlit
+pandas
+textblob
+deep-translator
+langdetect
 matplotlib
